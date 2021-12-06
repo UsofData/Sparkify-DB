@@ -6,19 +6,45 @@ from sql_queries import *
 
 
 def process_song_file(cur, filepath):
+    '''Opens a given filepath to a song and obtains the song and artist info.
+    Then, all of it is inserted into the song and artist tables.
+    
+    Args:
+         cur: cursor that points to the the connection to the server
+         filepath: the location of the songfile to be processed
+    '''
     # open song file
     df = pd.read_json(filepath, typ='series')
 
     # insert song record
-    song_data = df[['song_id','title','artist_id','year','duration']].values.tolist()
+    song_data = df[[
+        'song_id',
+        'title',
+        'artist_id',
+        'year',
+        'duration',
+    ]].values.tolist()
     cur.execute(song_table_insert, song_data)
     
     # insert artist record
-    artist_data = df[['artist_id','artist_name','artist_location','artist_latitude','artist_longitude']].replace({pd.np.nan:None}).values.tolist()
+    artist_data = df[[
+        'artist_id',
+        'artist_name',
+        'artist_location',
+        'artist_latitude',
+        'artist_longitude',
+    ]].replace({pd.np.nan:None}).values.tolist()
     cur.execute(artist_table_insert, artist_data)
 
 
 def process_log_file(cur, filepath):
+    '''looks through a a given filepath to a logfile that contains information
+    in order to populate the time, users and songplay tables.
+    
+    Args:
+        cur: cursor that points to the the connection to the server
+        filepath: location of the logfile
+    '''
     # open log file
     df = pd.read_json(filepath, lines=True)
 
@@ -29,15 +55,38 @@ def process_log_file(cur, filepath):
     t = pd.to_datetime(df.ts, unit = 'ms')
     
     # insert time data records
-    time_data = [t.dt.strftime('%H:%M:%S'), t.dt.hour, t.dt.day, t.dt.week, t.dt.month, t.dt.year, t.dt.weekday]
-    column_labels = ['start_time', 'hour', 'day', 'week', 'month', 'year', 'weekday']
+    time_data = [
+        t.dt.strftime('%H:%M:%S'), 
+        t.dt.hour, 
+        t.dt.day, 
+        t.dt.week, 
+        t.dt.month, 
+        t.dt.year, 
+        t.dt.weekday,
+    ]
+    
+    column_labels = [
+        'start_time', 
+        'hour', 
+        'day', 
+        'week', 
+        'month', 
+        'year', 
+        'weekday',
+    ]
     time_df = pd.DataFrame(time_data, index=column_labels).T
 
     for i, row in time_df.iterrows():
         cur.execute(time_table_insert, list(row))
 
     # load user table
-    user_df = df[['userId','firstName','lastName','gender','level']]
+    user_df = df[[
+        'userId',
+        'firstName',
+        'lastName',
+        'gender',
+        'level',
+    ]]
 
     # insert user records
     for i, row in user_df.iterrows():
@@ -56,11 +105,29 @@ def process_log_file(cur, filepath):
             songid, artistid = None, None
 
         # insert songplay record
-        songplay_data = (time_df.loc[index, 'start_time'], row.userId, row.level, songid, artistid, row.sessionId, row.location, row.userAgent)
+        songplay_data = (
+            time_df.loc[index, 'start_time'], 
+            row.userId, 
+            row.level, 
+            songid, 
+            artistid, 
+            row.sessionId, 
+            row.location, 
+            row.userAgent,
+        )
         cur.execute(songplay_table_insert, songplay_data)
 
 
-def process_data(cur, conn, filepath, func):
+def process_data(cur, conn, filepath, func):'''
+    loop through all the directories in the provided file path and process
+    each .json file found.
+    
+    Args:
+        cur: cursor that points to the the connection to the server
+        conn: the connection to the server; used to commit
+        filepath: the file path to look through
+        func: function to use to process the files
+    '''
     # get all files matching extension from directory
     all_files = []
     for root, dirs, files in os.walk(filepath):
@@ -80,6 +147,8 @@ def process_data(cur, conn, filepath, func):
 
 
 def main():
+    '''connect to our host with the credentials and process the files into the DB
+    '''
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     cur = conn.cursor()
 
