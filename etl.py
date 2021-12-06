@@ -118,7 +118,8 @@ def process_log_file(cur, filepath):
         cur.execute(songplay_table_insert, songplay_data)
 
 
-def process_data(cur, conn, filepath, func):'''
+def process_data(cur, conn, filepath, func):
+    '''
     loop through all the directories in the provided file path and process
     each .json file found.
     
